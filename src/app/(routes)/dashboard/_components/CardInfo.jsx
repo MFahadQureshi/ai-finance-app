@@ -37,7 +37,6 @@ function CardInfo({ budgetList, incomeList }) {
   }, [totalBudget, totalIncome, totalSpend]);
 
   const CalculateCardInfo = () => {
-    console.log(budgetList);
     let totalBudget_ = 0;
     let totalSpend_ = 0;
     let totalIncome_ = 0;
@@ -62,8 +61,8 @@ function CardInfo({ budgetList, incomeList }) {
         <div>
           <div className="p-7 border mt-4 -mb-1 rounded-2xl flex items-center justify-between">
             <div className="">
-              <div className="flex mb-2 flex-row space-x-1 items-center ">
-                <h2 className="text-md ">Finan Smart AI</h2>
+              <div className="flex mb-2 flex-row space-x-1 items-center">
+                <h2 className="text-md">Finan Smart AI</h2>
                 <Sparkles
                   className="rounded-full text-white w-10 h-10 p-2
                   bg-gradient-to-r
@@ -118,10 +117,10 @@ function CardInfo({ budgetList, incomeList }) {
         </div>
       ) : (
         <div className="mt-7 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {[1, 2, 3].map((item, index) => (
+          {[1, 2, 3].map((item) => (
             <div
               className="h-[110px] w-full bg-slate-200 animate-pulse rounded-lg"
-              key={index}
+              key={item} // Updated to use `item` as the key
             ></div>
           ))}
         </div>
