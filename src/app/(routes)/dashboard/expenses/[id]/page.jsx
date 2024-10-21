@@ -8,7 +8,7 @@ import BudgetItem from "../../budgets/_components/BudgetItem";
 import AddExpense from "../_components/AddExpense";
 import ExpenseListTable from "../_components/ExpenseListTable";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Pen, PenBox, Trash } from "lucide-react";
+import { ArrowLeft, Trash } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,63 +26,76 @@ import EditBudget from "../_components/EditBudget";
 
 function ExpensesScreen({ params }) {
   const { user } = useUser();
-  const [budgetInfo, setbudgetInfo] = useState();
-  const [expensesList, setExpensesList] = useState([]);
+  const [budgetInfo, setBudgetInfo] = useState(null); // Initialize with null
+  const [expensesList, setExpensesList] = useState([]); // Initialize with empty array
   const route = useRouter();
+
   useEffect(() => {
-    user && getBudgetInfo();
-  }, [user]);
+    if (user && params?.id) {
+      getBudgetInfo();
+    }
+  }, [user, params?.id]);
 
   /**
    * Get Budget Information
    */
   const getBudgetInfo = async () => {
-    const result = await db
-      .select({
-        ...getTableColumns(Budgets),
-        totalSpend: sql`sum(${Expenses.amount})`.mapWith(Number),
-        totalItem: sql`count(${Expenses.id})`.mapWith(Number),
-      })
-      .from(Budgets)
-      .leftJoin(Expenses, eq(Budgets.id, Expenses.budgetId))
-      .where(eq(Budgets.createdBy, user?.primaryEmailAddress?.emailAddress))
-      .where(eq(Budgets.id, params.id))
-      .groupBy(Budgets.id);
+    try {
+      const result = await db
+        .select({
+          ...getTableColumns(Budgets),
+          totalSpend: sql`sum(${Expenses.amount})`.mapWith(Number),
+          totalItem: sql`count(${Expenses.id})`.mapWith(Number),
+        })
+        .from(Budgets)
+        .leftJoin(Expenses, eq(Budgets.id, Expenses.budgetId))
+        .where(eq(Budgets.createdBy, user?.primaryEmailAddress?.emailAddress))
+        .where(eq(Budgets.id, params.id))
+        .groupBy(Budgets.id);
 
-    setbudgetInfo(result[0]);
-    getExpensesList();
+      setBudgetInfo(result[0]);
+      getExpensesList();
+    } catch (error) {
+      console.error("Error fetching budget info:", error);
+      toast.error("Failed to fetch budget information.");
+    }
   };
 
   /**
    * Get Latest Expenses
    */
   const getExpensesList = async () => {
-    const result = await db
-      .select()
-      .from(Expenses)
-      .where(eq(Expenses.budgetId, params.id))
-      .orderBy(desc(Expenses.id));
-    setExpensesList(result);
-    console.log(result);
+    try {
+      const result = await db
+        .select()
+        .from(Expenses)
+        .where(eq(Expenses.budgetId, params.id))
+        .orderBy(desc(Expenses.id));
+
+      setExpensesList(result);
+    } catch (error) {
+      console.error("Error fetching expenses:", error);
+      toast.error("Failed to fetch expenses.");
+    }
   };
 
   /**
    * Used to Delete budget
    */
   const deleteBudget = async () => {
-    const deleteExpenseResult = await db
-      .delete(Expenses)
-      .where(eq(Expenses.budgetId, params.id))
-      .returning();
+    try {
+      // Delete associated expenses first
+      await db.delete(Expenses).where(eq(Expenses.budgetId, params.id));
 
-    if (deleteExpenseResult) {
-      const result = await db
-        .delete(Budgets)
-        .where(eq(Budgets.id, params.id))
-        .returning();
+      // Delete the budget
+      await db.delete(Budgets).where(eq(Budgets.id, params.id));
+
+      toast.success("Budget and expenses deleted!");
+      route.replace("/dashboard/budgets");
+    } catch (error) {
+      console.error("Error deleting budget:", error);
+      toast.error("Failed to delete budget.");
     }
-    toast("Budget Deleted !");
-    route.replace("/dashboard/budgets");
   };
 
   return (
@@ -123,17 +136,11 @@ function ExpensesScreen({ params }) {
           </AlertDialog>
         </div>
       </h2>
-      <div
-        className="grid grid-cols-1 
-        md:grid-cols-2 mt-6 gap-5"
-      >
+      <div className="grid grid-cols-1 md:grid-cols-2 mt-6 gap-5">
         {budgetInfo ? (
           <BudgetItem budget={budgetInfo} />
         ) : (
-          <div
-            className="h-[150px] w-full bg-slate-200 
-            rounded-lg animate-pulse"
-          ></div>
+          <div className="h-[150px] w-full bg-slate-200 rounded-lg animate-pulse"></div>
         )}
         <AddExpense
           budgetId={params.id}
